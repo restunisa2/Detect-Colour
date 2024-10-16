@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 # Judul aplikasi
-st.title("Program Deteksi Warna pada Video")
+st.title("Program Deteksi Warna")
 
 # Fungsi untuk mendeteksi warna
 def detect_color(hue, saturation, value):
