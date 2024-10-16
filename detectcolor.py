@@ -3,15 +3,7 @@ import streamlit as st
 import numpy as np
 
 # Judul aplikasi
-st.title("Program Pengenalan Warna")
-
-# Menyiapkan kamera
-cam = cv2.VideoCapture(0)
-cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
-# Mengambil gambar dalam loop
-start = st.button('Start Webcam', key='start_button')
+st.title("Program Deteksi Warna pada Video")
 
 # Fungsi untuk mendeteksi warna
 def detect_color(hue, saturation, value):
@@ -38,29 +30,34 @@ def detect_color(hue, saturation, value):
     else:
         return "MERAH"
 
-# Mengaktifkan webcam saat tombol ditekan
+# Mengaktifkan webcam
+cam = cv2.VideoCapture(0)
+
+# Atur resolusi kamera
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+# Memulai streaming video
+start = st.button('Mulai Video', key='start_video')
+frame_placeholder = st.empty()  # Placeholder untuk video
+
+# Tombol untuk menghentikan video
+stop = False
+
 if start:
-    frame_placeholder = st.empty()  # Tempat untuk menampilkan frame
-
-    # Tombol stop diletakkan di luar loop agar tidak duplikat
-    stop = st.button('Stop Webcam', key='stop_button')  
-
-    while not stop:  # Looping selama tombol stop belum ditekan
-        ret, frame = cam.read()  # ret akan bernilai True jika frame berhasil dibaca
-
+    while not stop:
+        ret, frame = cam.read()  # Membaca frame dari kamera
         if not ret:
-            st.write("Gagal mengambil gambar dari kamera.")
-            break  # Berhenti jika tidak bisa membaca frame
-
+            st.write("Tidak dapat mengakses kamera.")
+            break
+        
         # Konversi frame dari BGR ke HSV
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         height, width, _ = frame.shape
 
-        # Koordinat tengah frame
+        # Mengambil warna piksel di tengah frame
         cx = int(width / 2)
         cy = int(height / 2)
-
-        # Mengambil nilai warna piksel di tengah frame
         pixel_center = hsv_frame[cy, cx]
         hue = pixel_center[0]
         saturation = pixel_center[1]
@@ -69,23 +66,22 @@ if start:
         # Deteksi warna
         color = detect_color(hue, saturation, value)
 
-        # Mendapatkan nilai BGR untuk teks dan lingkaran
+        # Tampilkan deteksi warna pada video
         pixel_center_bgr = frame[cy, cx]
         b, g, r = int(pixel_center_bgr[0]), int(pixel_center_bgr[1]), int(pixel_center_bgr[2])
-
-        # Tambahkan teks warna dan lingkaran di tengah frame
         cv2.putText(frame, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
         cv2.circle(frame, (cx, cy), 10, (b, g, r), 5)
 
-        # Konversi frame dari BGR ke RGB untuk ditampilkan di Streamlit
+        # Konversi frame ke RGB untuk ditampilkan di Streamlit
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Perbarui gambar pada setiap frame
-        frame_placeholder.image(frame_rgb, caption="Program Pengenalan Warna", use_column_width=True)
+        # Tampilkan video dalam Streamlit
+        frame_placeholder.image(frame_rgb, caption="Streaming Video", use_column_width=True)
 
-        # Perbarui status tombol stop tanpa menduplikasinya
-        stop = st.session_state.get('stop_button', False)
+        # Cek apakah pengguna menekan tombol "Hentikan Video"
+        stop = st.button('Hentikan Video', key='stop_video')
 
-    # Lepas kamera setelah selesai
-    cam.release()
+# Setelah berhenti, lepas kamera
+cam.release()
+
 
