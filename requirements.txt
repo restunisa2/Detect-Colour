@@ -1,7 +1,0 @@
-import cv2
-import streamlit as st
-import numpy as np
-
-print(cv2.__version__)
-print(st.__version__)
-print(np.__version__)
