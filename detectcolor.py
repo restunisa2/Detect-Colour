@@ -79,4 +79,3 @@ while True:
 
 # Lepas kamera setelah selesai
 cam.release()
-cv2.destroyAllWindows()
