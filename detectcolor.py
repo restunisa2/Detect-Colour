@@ -1,10 +1,10 @@
 import streamlit as st
 import cv2
 import numpy as np
-from PIL import Image
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 # Judul aplikasi
-st.title("Program Deteksi Warna pada Video")
+st.title("Deteksi Warna Real-Time")
 
 # Fungsi untuk mendeteksi warna
 def detect_color(hue, saturation, value):
@@ -31,36 +31,37 @@ def detect_color(hue, saturation, value):
     else:
         return "MERAH"
 
-# Mengambil input kamera dari browser
-camera_input = st.camera_input("Aktifkan kamera untuk memulai video")
+# Video Processor untuk mengolah stream video
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.color = "Tidak Teridentifikasi"
 
-if camera_input:
-    # Baca gambar dari kamera
-    img_pil = Image.open(camera_input)
-    frame = np.array(img_pil)
+    def recv(self, frame):
+        # Konversi frame ke format OpenCV
+        img = frame.to_ndarray(format="bgr24")
 
-    # Konversi frame dari BGR ke HSV
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-    height, width, _ = frame.shape
+        # Konversi frame dari BGR ke HSV
+        hsv_frame = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        height, width, _ = img.shape
 
-    # Mengambil warna piksel di tengah frame
-    cx = int(width / 2)
-    cy = int(height / 2)
-    pixel_center = hsv_frame[cy, cx]
-    hue = pixel_center[0]
-    saturation = pixel_center[1]
-    value = pixel_center[2]
+        # Mengambil warna piksel di tengah frame
+        cx = int(width / 2)
+        cy = int(height / 2)
+        pixel_center = hsv_frame[cy, cx]
+        hue = pixel_center[0]
+        saturation = pixel_center[1]
+        value = pixel_center[2]
 
-    # Deteksi warna
-    color = detect_color(hue, saturation, value)
+        # Deteksi warna berdasarkan nilai HSV
+        self.color = detect_color(hue, saturation, value)
 
-    # Mendapatkan nilai RGB untuk menampilkan lingkaran dan teks warna
-    pixel_center_rgb = frame[cy, cx]
-    r, g, b = int(pixel_center_rgb[0]), int(pixel_center_rgb[1]), int(pixel_center_rgb[2])
+        # Menambahkan teks dan lingkaran pada video
+        pixel_center_bgr = img[cy, cx]
+        b, g, r = int(pixel_center_bgr[0]), int(pixel_center_bgr[1]), int(pixel_center_bgr[2])
+        cv2.putText(img, self.color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
+        cv2.circle(img, (cx, cy), 10, (b, g, r), 5)
 
-    # Tambahkan teks warna dan lingkaran di tengah frame
-    cv2.putText(frame, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (r, g, b), 8)
-    cv2.circle(frame, (cx, cy), 10, (r, g, b), 5)
+        return img
 
-    # Tampilkan video di Streamlit
-    st.image(frame, caption="Deteksi Warna Video", use_column_width=True)
+# WebRTC untuk stream video
+webrtc_streamer(key="example", video_processor_factory=VideoProcessor)
