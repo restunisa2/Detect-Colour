@@ -1,6 +1,7 @@
-import streamlit as st
 import cv2
+import streamlit as st
 import numpy as np
+from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
 
 # Judul aplikasi
 st.title("Program Deteksi Warna Real-Time")
@@ -30,52 +31,37 @@ def detect_color(hue, saturation, value):
     else:
         return "MERAH"
 
-# Mulai video capture menggunakan OpenCV
-cam = cv2.VideoCapture(0)
-cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+# Class untuk memproses frame video secara real-time
+class ColorDetection(VideoTransformerBase):
+    def transform(self, frame):
+        img = frame.to_ndarray(format="bgr24")
 
-# Placeholder untuk video
-frame_placeholder = st.empty()
+        # Konversi frame dari BGR ke HSV
+        hsv_frame = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        height, width, _ = img.shape
 
-# Loop untuk streaming video secara real-time
-while True:
-    ret, frame = cam.read()
-    
-    if not ret:
-        st.write("Gagal mengambil gambar dari kamera.")
-        break
+        # Koordinat tengah frame
+        cx = int(width / 2)
+        cy = int(height / 2)
 
-    # Konversi frame dari BGR ke HSV
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    height, width, _ = frame.shape
+        # Mengambil nilai warna piksel di tengah frame
+        pixel_center = hsv_frame[cy, cx]
+        hue = pixel_center[0]
+        saturation = pixel_center[1]
+        value = pixel_center[2]
 
-    # Koordinat tengah frame
-    cx = int(width / 2)
-    cy = int(height / 2)
+        # Deteksi warna berdasarkan HSV
+        color = detect_color(hue, saturation, value)
 
-    # Mengambil warna piksel di tengah frame
-    pixel_center = hsv_frame[cy, cx]
-    hue = pixel_center[0]
-    saturation = pixel_center[1]
-    value = pixel_center[2]
+        # Mendapatkan nilai BGR untuk menampilkan teks dan lingkaran
+        pixel_center_bgr = img[cy, cx]
+        b, g, r = int(pixel_center_bgr[0]), int(pixel_center_bgr[1]), int(pixel_center_bgr[2])
 
-    # Deteksi warna berdasarkan nilai HSV
-    color = detect_color(hue, saturation, value)
+        # Tambahkan teks warna dan lingkaran di tengah frame
+        cv2.putText(img, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
+        cv2.circle(img, (cx, cy), 10, (b, g, r), 5)
 
-    # Mendapatkan nilai BGR untuk menampilkan teks dan lingkaran
-    pixel_center_bgr = frame[cy, cx]
-    b, g, r = int(pixel_center_bgr[0]), int(pixel_center_bgr[1]), int(pixel_center_bgr[2])
+        return img
 
-    # Tambahkan teks warna dan lingkaran di tengah frame
-    cv2.putText(frame, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
-    cv2.circle(frame, (cx, cy), 10, (b, g, r), 5)
-
-    # Konversi frame dari BGR ke RGB untuk ditampilkan di Streamlit
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Tampilkan frame secara real-time di Streamlit
-    frame_placeholder.image(frame_rgb, caption="Deteksi Warna Real-Time", use_column_width=True)
-
-# Lepas kamera setelah selesai
-cam.release()
+# Komponen WebRTC untuk streaming video
+webrtc_streamer(key="example", video_transformer_factory=ColorDetection)
