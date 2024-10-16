@@ -88,5 +88,4 @@ if start:
 
     # Lepas kamera setelah selesai
     cam.release()
-# Komponen WebRTC untuk streaming video
-webrtc_streamer(key="example", video_transformer_factory=ColorDetection)
+
