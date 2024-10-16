@@ -32,7 +32,7 @@ def detect_color(hue, saturation, value):
         return "MERAH"
 
 # Mengambil input kamera dari browser
-camera_input = st.camera_input("Aktifkan kamera untuk memulai video")
+camera_input = st.camera_input("Aktifkan kamera")
 
 if camera_input:
     # Baca gambar dari kamera
