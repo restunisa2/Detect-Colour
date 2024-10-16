@@ -1,10 +1,17 @@
 import cv2
 import streamlit as st
 import numpy as np
-from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
 
 # Judul aplikasi
-st.title("Program Deteksi Warna Real-Time")
+st.title("Program Pengenalan Warna")
+
+# Menyiapkan kamera
+cam = cv2.VideoCapture(0)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+# Mengambil gambar dalam loop
+start = st.button('Start Webcam', key='start_button')
 
 # Fungsi untuk mendeteksi warna
 def detect_color(hue, saturation, value):
@@ -31,14 +38,23 @@ def detect_color(hue, saturation, value):
     else:
         return "MERAH"
 
-# Class untuk memproses frame video secara real-time
-class ColorDetection(VideoTransformerBase):
-    def transform(self, frame):
-        img = frame.to_ndarray(format="bgr24")
+# Mengaktifkan webcam saat tombol ditekan
+if start:
+    frame_placeholder = st.empty()  # Tempat untuk menampilkan frame
+
+    # Tombol stop diletakkan di luar loop agar tidak duplikat
+    stop = st.button('Stop Webcam', key='stop_button')  
+
+    while not stop:  # Looping selama tombol stop belum ditekan
+        ret, frame = cam.read()  # ret akan bernilai True jika frame berhasil dibaca
+
+        if not ret:
+            st.write("Gagal mengambil gambar dari kamera.")
+            break  # Berhenti jika tidak bisa membaca frame
 
         # Konversi frame dari BGR ke HSV
-        hsv_frame = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        height, width, _ = img.shape
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        height, width, _ = frame.shape
 
         # Koordinat tengah frame
         cx = int(width / 2)
@@ -50,18 +66,27 @@ class ColorDetection(VideoTransformerBase):
         saturation = pixel_center[1]
         value = pixel_center[2]
 
-        # Deteksi warna berdasarkan HSV
+        # Deteksi warna
         color = detect_color(hue, saturation, value)
 
-        # Mendapatkan nilai BGR untuk menampilkan teks dan lingkaran
-        pixel_center_bgr = img[cy, cx]
+        # Mendapatkan nilai BGR untuk teks dan lingkaran
+        pixel_center_bgr = frame[cy, cx]
         b, g, r = int(pixel_center_bgr[0]), int(pixel_center_bgr[1]), int(pixel_center_bgr[2])
 
         # Tambahkan teks warna dan lingkaran di tengah frame
-        cv2.putText(img, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
-        cv2.circle(img, (cx, cy), 10, (b, g, r), 5)
+        cv2.putText(frame, color, (cx - 100, cy - 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (b, g, r), 8)
+        cv2.circle(frame, (cx, cy), 10, (b, g, r), 5)
 
-        return img
+        # Konversi frame dari BGR ke RGB untuk ditampilkan di Streamlit
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+        # Perbarui gambar pada setiap frame
+        frame_placeholder.image(frame_rgb, caption="Program Pengenalan Warna", use_column_width=True)
+
+        # Perbarui status tombol stop tanpa menduplikasinya
+        stop = st.session_state.get('stop_button', False)
+
+    # Lepas kamera setelah selesai
+    cam.release()
 # Komponen WebRTC untuk streaming video
 webrtc_streamer(key="example", video_transformer_factory=ColorDetection)
